@@ -7,7 +7,7 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 
-class DialView(context: Context?) : View(context) {
+class DialView @JvmOverloads constructor(context: Context, attr: AttributeSet? = null, defStyleAttr: Int = 0) : View(context, attr, defStyleAttr) {
 
     private var mWidth: Float = 0f
     private var mHeight: Float = 0f
@@ -25,19 +25,38 @@ class DialView(context: Context?) : View(context) {
             textAlign = Paint.Align.CENTER
             textSize = 40f
         }
+
         mDialPaint.color = Color.GRAY
-        setOnClickListener {
-            mActiveSelection = (mActiveSelection + 1) % SELECTION_COUNT
-            // Set dial background color to green if selection is >= 1.
-            if (mActiveSelection >= 1) {
-                mDialPaint.color = Color.GREEN
-            } else {
-                mDialPaint.color = Color.GRAY
+
+        setOnTouchListener(object : OnSwipeTouchListener(context) {
+            override fun onRightSwipe() {
+                swipeTo(Direction.RIGHT)
             }
-            // Redraw the view.
-            invalidate()
+            override fun onLeftSwipe() {
+                super.onLeftSwipe()
+                swipeTo(Direction.LEFT)
+            }
+        })
+
+    }
+
+    private fun swipeTo(dir : Direction){
+        if(dir == Direction.RIGHT)
+            mActiveSelection = (mActiveSelection + 1) % SELECTION_COUNT
+        else {
+            mActiveSelection--
+            if(mActiveSelection < 0) mActiveSelection = 3
         }
 
+        // Set dial background color to green if selection is >= 1.
+        if (mActiveSelection >= 1) {
+            mDialPaint.color = Color.GREEN
+        }
+        else {
+            mDialPaint.color = Color.GRAY
+        }
+        // Redraw the view.
+        invalidate()
     }
 
     private fun computeXYForPosition(pos : Int, radius : Float) : FloatArray {
@@ -52,14 +71,14 @@ class DialView(context: Context?) : View(context) {
     override fun onDraw(canvas: Canvas?) {
         canvas?.drawCircle(mWidth / 2, mHeight / 2, mRadius, mDialPaint)
         // Draw the text labels.
-        val labelRadius = mRadius + 20
+        val labelRadius = mRadius + 25
         val label = mTempLabel
         for (i in 0 until SELECTION_COUNT) {
             val xyData = computeXYForPosition(i, labelRadius)
             val x = xyData[0]
             val y = xyData[1]
             label.setLength(0)
-            label.append(i)
+            label.append(if(i == 0) "off" else i)
             canvas?.drawText(label, 0, label.length, x, y, mTextPaint)
         }
         // Draw the indicator mark.
@@ -79,8 +98,10 @@ class DialView(context: Context?) : View(context) {
         mRadius = (Math.min(mWidth, mHeight) / 2 * 0.8).toFloat()
     }
 
-    constructor(context: Context?, attrs: AttributeSet?) : this(context)
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : this(context, attrs)
+    enum class Direction{
+        LEFT,
+        RIGHT
+    }
 
     private companion object {
         const val SELECTION_COUNT = 4
